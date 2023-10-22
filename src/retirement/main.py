@@ -1,47 +1,54 @@
 # -*- coding: utf-8 -*-
 #
-from os.path import join, dirname
-from anki.hooks import addHook, wrap
-from aqt import mw
-import anki.find
-from aqt.qt import *
-from anki.cards import Card
-from aqt.utils import tooltip, showInfo
-import aqt
-from anki.utils import ids2str, intTime
-from anki.scheduler import v3
-#from anki.collection import _Collection, LegacyReviewUndo, LegacyCheckpoint
+
 import copy
 import time
+from os.path import join, dirname, basename
+
+import aqt
+from aqt import mw
+from aqt.qt import (QLabel, QSpinBox, QCheckBox, QHBoxLayout, QFrame,
+                    QProgressBar, QVBoxLayout, QWidget, QDialog,
+                    QSizePolicy, Qt, QRadioButton, QGroupBox,
+                    QLineEdit, QAction, QMenu, QIcon, QPushButton)
+from aqt.utils import tooltip, showInfo
+
+import anki.find
+from anki.cards import Card
+from anki.hooks import addHook, wrap
+from anki.utils import ids2str, int_time, is_mac
+from anki.scheduler import v3
+# from anki.collection import _Collection, LegacyReviewUndo, LegacyCheckpoint
+
 
 addon_path = dirname(__file__)
 
 verNumber = "2.1.45.3"
 
 
-def getConfig():
+def get_config():
     return mw.addonManager.getConfig(__name__)
 
 
-RetirementTag = getConfig()["Retirement Tag"]
+RetirementTag = get_config()["Retirement Tag"]
 
 
-def attemptStartingRefresh():
-    startingRefresh()
+def attempt_starting_refresh():
+    starting_refresh()
 
 
-def startingRefresh():
-    refreshConfig()
+def starting_refresh():
+    refresh_config()
     if mw.RetroactiveRetiring:
-        applyRetirementActions()
+        apply_retirement_actions()
     elif mw.DailyRetiring:
-        if (time.time() - mw.LastMassRetirement > 86400000):
-            applyRetirementActions()
+        if time.time() - mw.LastMassRetirement > 86400000:
+            apply_retirement_actions()
 
 
-def refreshConfig():
+def refresh_config():
     global RetirementDeckName, RetirementTag, RealNotifications, RetroNotifications
-    config = getConfig()
+    config = get_config()
     RetirementDeckName = config["Retirement Deck Name"]
     RetirementTag = config["Retirement Tag"]
     mw.RetroactiveRetiring = False
@@ -59,7 +66,7 @@ def refreshConfig():
         RetroNotifications = True
 
 
-def cbStatusCheck(dn, sc, tn, mc):
+def cb_status_check(dn, sc, tn, mc):
     if dn.isChecked():
         sc.setEnabled(False)
         tn.setEnabled(False)
@@ -70,7 +77,7 @@ def cbStatusCheck(dn, sc, tn, mc):
         mc.setEnabled(True)
 
 
-def addRetirementOpts(self, Dialog):
+def add_retirement_opts(self, Dialog):
     row = self.gridLayout_3.rowCount()
     wid = QLabel("<b>Card Retirement</b>")
     self.gridLayout_3.addWidget(wid, row, 0, 1, 1)
@@ -91,9 +98,9 @@ def addRetirementOpts(self, Dialog):
     self.gridLayout_3.addWidget(
             QLabel("Retiring interval (0 = off)"), row, 0, 1, 1)
     self.gridLayout_3.addWidget(self.rInt, row, 1, 1, 1)
-    dayLab = QLabel("days")
-    dayLab.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Fixed)
-    self.gridLayout_3.addWidget(dayLab, row, 2, 1, 1)
+    day_lab = QLabel("days")
+    day_lab.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Fixed)
+    self.gridLayout_3.addWidget(day_lab, row, 2, 1, 1)
     row += 1
     wid = QLabel("Retirement actions")
     self.gridLayout_3.addWidget(wid, row, 0, 1, 1)
@@ -111,7 +118,7 @@ def addRetirementOpts(self, Dialog):
     self.tn.setToolTip(
             "Applies on a per-note basis; all related cards will be tagged.")
     self.mc.setToolTip("Applies on a per-card basis.")
-    self.dn.clicked.connect(lambda: cbStatusCheck(
+    self.dn.clicked.connect(lambda: cb_status_check(
             self.dn, self.sc, self.tn, self.mc))
     layout = QHBoxLayout()
     layout.setContentsMargins(0, 0, 0, 0)
@@ -126,7 +133,7 @@ def addRetirementOpts(self, Dialog):
     self.gridLayout_3.addLayout(layout, row, 1, 1, 2)
 
 
-def saveRetirement(self):
+def save_retirement(self):
     c = self.conf['new']
     f = self.form
     c['retiringInterval'] = f.rInt.value()
@@ -134,7 +141,7 @@ def saveRetirement(self):
     ), 'tag': f.tn.isChecked(), 'move': f.mc.isChecked()}
 
 
-def loadRetirement(self):
+def load_retirement(self):
 
     c = self.conf['new']
     f = self.form
@@ -154,52 +161,52 @@ def loadRetirement(self):
         f.mc.setEnabled(False)
 
 
-def raSet(ra):
+def ra_set(ra):
     for a in ra:
         if ra[a]:
             return True
     return False
 
 
-def getProgressWidget():
-    progressWidget = QWidget(None)
+def get_progress_widget():
+    progress_widget = QWidget(None)
     layout = QVBoxLayout()
-    progressWidget.setFixedSize(400, 70)
-    progressWidget.setWindowModality(Qt.WindowModality.ApplicationModal)
-    progressWidget.setWindowIcon(QIcon(join(addon_path, 'icon.png')))
-    progressWidget.setWindowTitle("Running Mass Retirement...")
-    bar = QProgressBar(progressWidget)
+    progress_widget.setFixedSize(400, 70)
+    progress_widget.setWindowModality(Qt.WindowModality.ApplicationModal)
+    progress_widget.setWindowIcon(QIcon(join(addon_path, 'icon.png')))
+    progress_widget.setWindowTitle("Running Mass Retirement...")
+    progress_bar = QProgressBar(progress_widget)
     if is_mac:
-        bar.setFixedSize(380, 50)
+        progress_bar.setFixedSize(380, 50)
     else:
-        bar.setFixedSize(390, 50)
-    bar.move(10, 10)
-    per = QLabel(bar)
+        progress_bar.setFixedSize(390, 50)
+    progress_bar.move(10, 10)
+    per = QLabel(progress_bar)
     per.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    progressWidget.show()
-    return progressWidget, bar
+    progress_widget.show()
+    return progress_widget, progress_bar
 
 
-def applyRetirementActions(notes=False, showNotification=True, optimizer=False):
-    timeStart = time.time()
-    notesToDelete = []
-    cardsToMove = []
+def apply_retirement_actions(notes=False, show_notification=True, optimizer=False):
+    time_start = time.time()
+    notes_to_delete = []
+    cards_to_move = []
     suspended = 0
     tagged = 0
     total = 0
-    progressWidget, progressBar = getProgressWidget()
+    progress_widget, progress_bar = get_progress_widget()
     if not optimizer:
         mw.checkpoint('Card Retirement')
     if not notes:
-        notes = grabCol()
+        notes = grab_col()
     checkpointed = True
-    progressBar.setMinimum(0)
-    progressBar.setMaximum(len(notes))
+    progress_bar.setMinimum(0)
+    progress_bar.setMaximum(len(notes))
     count = 0
     for nid in notes:
         count += 1
         if count % 10 == 0:
-            progressBar.setValue(count)
+            progress_bar.setValue(count)
             mw.app.processEvents()
         note = mw.col.getNote(nid)
         cards = note.cards()
@@ -207,42 +214,41 @@ def applyRetirementActions(notes=False, showNotification=True, optimizer=False):
         for card in cards:
             if card.ivl == 0:
                 continue
-            notesToDelete, cardsToMove, suspended, tagged, total, checkpointed = handleRetirementActions(
-                    card, note, notesToDelete, cardsToMove, suspended, tagged, total, checkpointed)
+            notes_to_delete, cards_to_move, suspended, tagged, total, checkpointed = handle_retirement_actions(
+                    card, note, notes_to_delete, cards_to_move, suspended, tagged, total, checkpointed)
     notification = ''
-    ndl = len(notesToDelete)
-    cml = len(cardsToMove)
-    progressWidget.hide()
+    ndl = len(notes_to_delete)
+    cml = len(cards_to_move)
+    progress_widget.hide()
     if suspended > 0:
-        notification += '- ' + str(suspended) + \
-                ' card(s) have been suspended<br>'
+        notification += '- ' + str(suspended) + ' card(s) have been suspended<br>'
     if tagged > 0:
         notification += '- ' + str(tagged) + ' note(s) have been tagged<br>'
     if cml > 0:
         notification += '- ' + str(cml) + ' card(s) have been moved<br>'
-        moveToDeck(cardsToMove)
+        move_to_deck(cards_to_move)
     if ndl > 0:
         notification += '- ' + str(ndl) + ' note(s) have been deleted<br>'
-        mw.col.remNotes(notesToDelete)
-    timeEnd = time.time()
+        mw.col.remNotes(notes_to_delete)
+    time_end = time.time()
     if notification != '' and RetroNotifications:
-        displayNotification('<b>' + str(total) + ' card(s) have been retired in ' + str(
-                round(timeEnd - timeStart, 3)) + ' seconds:</b><br>' + notification)
+        display_notification('<b>' + str(total) + ' card(s) have been retired in ' + str(
+                round(time_end - time_start, 3)) + ' seconds:</b><br>' + notification)
     mw.reset()
-    saveMassRetirementTimestamp(time.time())
+    save_ass_retirement_timestamp(time.time())
 
 
-def setCheckpointed(checkpointed, review):
+def set_checkpointed(checkpointed, review):
     if not checkpointed and not review:
         mw.checkpoint("Card Retirement")
     return True
 
 
-def handleRetirementActions(
+def handle_retirement_actions(
                 card,
                 note,
-                notesToDelete,
-                cardsToMove,
+                notes_to_delete,
+                cards_to_move,
                 suspended,
                 tagged,
                 total,
@@ -250,45 +256,45 @@ def handleRetirementActions(
                 review=False):
     conf = mw.col.decks.confForDid(card.odid or card.did)['new']
     if 'retirementActions' in conf and 'retiringInterval' in conf:
-        if conf['retiringInterval'] > 0 and raSet(conf['retirementActions']):
-            rInt = conf['retiringInterval']
-            rAct = conf['retirementActions']
-            if card.ivl > rInt:
+        if conf['retiringInterval'] > 0 and ra_set(conf['retirementActions']):
+            retire_interval = conf['retiringInterval']
+            retire_actions = conf['retirementActions']
+            if card.ivl > retire_interval:
                 total += 1
-                if rAct['delete']:
-                    checkpointed = setCheckpointed(checkpointed, review)
-                    if note.id not in notesToDelete:
-                        notesToDelete.append(note.id)
+                if retire_actions['delete']:
+                    checkpointed = set_checkpointed(checkpointed, review)
+                    if note.id not in notes_to_delete:
+                        notes_to_delete.append(note.id)
                 else:
-                    if rAct['suspend']:
-                        checkpointed = setCheckpointed(checkpointed, review)
+                    if retire_actions['suspend']:
+                        checkpointed = set_checkpointed(checkpointed, review)
                         if card.queue != -1:
                             suspended += 1
                             card.queue = -1
                             card.flush()
 
-                    if rAct['tag']:
-                        checkpointed = setCheckpointed(checkpointed, review)
+                    if retire_actions['tag']:
+                        checkpointed = set_checkpointed(checkpointed, review)
                         if not note.hasTag(RetirementTag):
                             tagged += 1
                             note.addTag(RetirementTag)
                             note.flush()
-                    if rAct['move']:
-                        checkpointed = setCheckpointed(checkpointed, review)
+                    if retire_actions['move']:
+                        checkpointed = set_checkpointed(checkpointed, review)
                         if card.did != mw.col.decks.id(RetirementDeckName):
-                            cardsToMove.append(card.id)
-    return notesToDelete, cardsToMove, suspended, tagged, total, checkpointed
+                            cards_to_move.append(card.id)
+    return notes_to_delete, cards_to_move, suspended, tagged, total, checkpointed
 
 
-def displayNotification(text):
+def display_notification(text):
     showInfo(text=text, help="", type="info", title="Card Retirement")
 
 
-def grabCol():
+def grab_col():
     return anki.find.Finder(mw.col).findNotes('')
 
 
-def moveToDeck(cids, ogDeckId=False):
+def move_to_deck(cids, ogDeckId=False):
     if ogDeckId:
         did = ogDeckId
     else:
@@ -299,28 +305,26 @@ def moveToDeck(cids, ogDeckId=False):
     deck = mw.col.decks.get(did)
     if deck['dyn']:
         return
-    mod = intTime()
+    mod = int_time()
     usn = mw.col.usn()
     scids = ids2str(cids)
     mw.col.sched.remFromDyn(cids)
-    mw.col.db.execute("""
-update cards set usn=?, mod=?, did=? where id in """ + scids,
-                                        usn, mod, did)
+    mw.col.db.execute("""update cards set usn=?, mod=?, did=? where id in """ + scids, usn, mod, did)
 
 
-def checkInterval(self, card, ease):
-    workingCard = copy.copy(card)
-    notesToDelete = []
-    cardsToMove = []
+def check_interval(self, card, ease):
+    working_card = copy.copy(card)
+    notes_to_delete = []
+    cards_to_move = []
     suspended = 0
     tagged = 0
     total = 0
     checkpointed = False
     note = mw.col.getNote(card.nid)
-    notesToDelete, cardsToMove, suspended, tagged, total, checkpointed = handleRetirementActions(
-            card, note, notesToDelete, cardsToMove, suspended, tagged, total, checkpointed, True)
-    ndl = len(notesToDelete)
-    cml = len(cardsToMove)
+    notes_to_delete, cards_to_move, suspended, tagged, total, checkpointed = handle_retirement_actions(
+            card, note, notes_to_delete, cards_to_move, suspended, tagged, total, checkpointed, True)
+    ndl = len(notes_to_delete)
+    cml = len(cards_to_move)
     if suspended > 0 or tagged > 0 or cml > 0 or ndl > 0:
         last = len(mw.col._undo.entries) - 1
 
@@ -328,16 +332,16 @@ def checkInterval(self, card, ease):
         if cml > 0:
             mw.col._undo.entries[last].retirementActions.append('move')
             mw.col._undo.entries[last].retirementActions.append(card.did)
-            moveToDeck(cardsToMove)
+            move_to_deck(cards_to_move)
             mw.col.db.commit()
         if ndl > 0:
-            undoCopy = mw.col._undo
+            undo_copy = mw.col._undo
             mw.checkpoint("Card Retirement")
-            mw.col._undo.append(undoCopy)
-            mw.col.remNotes(notesToDelete)
+            mw.col._undo.append(undo_copy)
+            mw.col.remNotes(notes_to_delete)
         if tagged > 0:
             mw.col._undo.entries[last].retirementActions.append('tag')
-        if(RealNotifications):
+        if RealNotifications:
             tooltip('The card has been retired.')
 
 
@@ -399,40 +403,40 @@ def checkInterval(self, card, ease):
 # _Collection.undo = retirementUndo
 
 
-def saveConfig(wid, rdn, rt, retroR, dailyR, realN, retroN):
-    if retroR:
-        retroR = 'on'
-    elif dailyR:
-        retroR = 'once'
+def save_config(wid, rdn, rt, retro_r, daily_r, real_n, retro_n):
+    if retro_r:
+        retro_r = 'on'
+    elif daily_r:
+        retro_r = 'once'
     else:
-        retroR = 'off'
-    if realN:
-        realN = 'on'
+        retro_r = 'off'
+    if real_n:
+        real_n = 'on'
     else:
-        realN = 'off'
-    if retroN:
-        retroN = 'on'
+        real_n = 'off'
+    if retro_n:
+        retro_n = 'on'
     else:
-        retroN = 'off'
+        retro_n = 'off'
     conf = {
             "Retirement Deck Name": rdn,
             "Retirement Tag": rt,
-            "Mass Retirement on Startup": retroR,
-            "Real-time Notifications": realN,
-            "Mass Retirement Notifications": retroN,
+            "Mass Retirement on Startup": retro_r,
+            "Real-time Notifications": real_n,
+            "Mass Retirement Notifications": retro_n,
             "Last Mass Retirement": mw.LastMassRetirement}
     mw.addonManager.writeConfig(__name__, conf)
-    refreshConfig()
+    refresh_config()
     wid.hide()
 
 
 def testretire():
-    applyRetirementActions()
+    apply_retirement_actions()
 
 
-def openSettings():
-    retirementMenu = QDialog(mw)
-    retirementMenu.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.MSWindowsFixedSizeDialogHint)
+def open_settings():
+    retirement_menu = QDialog(mw)
+    retirement_menu.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.MSWindowsFixedSizeDialogHint)
     l1 = QLabel()
     l1.setText('Retirement Deck Name:')
     l1.setToolTip(
@@ -479,8 +483,8 @@ def openSettings():
     bg3b2.setFixedWidth(100)
     applyb = QPushButton('Apply')
     applyb.clicked.connect(
-            lambda: saveConfig(
-                    retirementMenu,
+            lambda: save_config(
+                    retirement_menu,
                     rdn.text(),
                     rt.text(),
                     bg1b1.isChecked(),
@@ -489,7 +493,7 @@ def openSettings():
                     bg3b1.isChecked()))
     applyb.setFixedWidth(100)
     cancelb = QPushButton('Cancel')
-    cancelb.clicked.connect(lambda: retirementMenu.hide())
+    cancelb.clicked.connect(lambda: retirement_menu.hide())
     cancelb.setFixedWidth(100)
     vh1 = QHBoxLayout()
     vh2 = QHBoxLayout()
@@ -530,16 +534,16 @@ def openSettings():
     vl.addWidget(bg2)
     vl.addWidget(bg3)
     vl.addLayout(vh6)
-    loadCurrent(rt, rdn, bg1b1, bg1b2, bg1b3, bg2b1, bg2b2, bg3b1, bg3b2)
-    retirementMenu.setWindowTitle(
+    load_current(rt, rdn, bg1b1, bg1b2, bg1b3, bg2b1, bg2b2, bg3b1, bg3b2)
+    retirement_menu.setWindowTitle(
             "Retirement Add-on Settings (Ver. " + verNumber + ")")
-    retirementMenu.setWindowIcon(QIcon(join(addon_path, 'icon.png')))
-    retirementMenu.setLayout(vl)
-    retirementMenu.show()
-    retirementMenu.setFixedSize(retirementMenu.size())
+    retirement_menu.setWindowIcon(QIcon(join(addon_path, 'icon.png')))
+    retirement_menu.setLayout(vl)
+    retirement_menu.show()
+    retirement_menu.setFixedSize(retirement_menu.size())
 
 
-def loadCurrent(rt, rdn, bg1b1, bg1b2, bg1b3, bg2b1, bg2b2, bg3b1, bg3b2):
+def load_current(rt, rdn, bg1b1, bg1b2, bg1b3, bg2b1, bg2b2, bg3b1, bg3b2):
     rt.setText(RetirementTag)
     rdn.setText(RetirementDeckName)
     if mw.RetroactiveRetiring:
@@ -558,44 +562,40 @@ def loadCurrent(rt, rdn, bg1b1, bg1b2, bg1b3, bg2b1, bg2b2, bg3b1, bg3b2):
         bg3b2.setChecked(True)
 
 
-def saveMassRetirementTimestamp(timestamp):
-    config = getConfig()
+def save_ass_retirement_timestamp(timestamp):
+    config = get_config()
     config["Last Mass Retirement"] = timestamp
     mw.addonManager.writeConfig(__name__, config)
 
 
-def setupMenu():
-    subMenu = QMenu('Retirement', mw)
-    mw.form.menuTools.addMenu(subMenu)
+def setup_menu():
+    sub_menu = QMenu('Retirement', mw)
+    mw.form.menuTools.addMenu(sub_menu)
 
-    retirementSettings = QAction("Retirement Settings", mw)
-    retirementSettings.triggered.connect(openSettings)
-    subMenu.addAction(retirementSettings)
+    retirement_settings = QAction("Retirement Settings", mw)
+    retirement_settings.triggered.connect(open_settings)
+    sub_menu.addAction(retirement_settings)
 
-    massRetirement = QAction("Run Mass Retirement", mw)
-    massRetirement.triggered.connect(testretire)
-    subMenu.addAction(massRetirement)
-
-
-setupMenu()
-v3.Scheduler.answerCard = wrap(v3.Scheduler.answerCard, checkInterval)
-aqt.deckconf.DeckConf.loadConf = wrap(
-        aqt.deckconf.DeckConf.loadConf, loadRetirement)
-aqt.deckconf.DeckConf.saveConf = wrap(
-        aqt.deckconf.DeckConf.saveConf, saveRetirement, "before")
-aqt.forms.dconf.Ui_Dialog.setupUi = wrap(
-        aqt.forms.dconf.Ui_Dialog.setupUi, addRetirementOpts)
-addHook("profileLoaded", attemptStartingRefresh)
+    mass_retirement = QAction("Run Mass Retirement", mw)
+    mass_retirement.triggered.connect(testretire)
+    sub_menu.addAction(mass_retirement)
 
 
-def supportAccept(self):
-    if self.addon == os.path.basename(addon_path):
-        refreshConfig()
+setup_menu()
+v3.Scheduler.answerCard = wrap(v3.Scheduler.answerCard, check_interval)
+aqt.deckconf.DeckConf.loadConf = wrap(aqt.deckconf.DeckConf.loadConf, load_retirement)
+aqt.deckconf.DeckConf.saveConf = wrap(aqt.deckconf.DeckConf.saveConf, save_retirement, "before")
+aqt.forms.dconf.Ui_Dialog.setupUi = wrap(aqt.forms.dconf.Ui_Dialog.setupUi, add_retirement_opts)
+addHook("profileLoaded", attempt_starting_refresh)
 
 
-aqt.addons.ConfigEditor.accept = wrap(
-        aqt.addons.ConfigEditor.accept, supportAccept)
+def support_accept(self):
+    if self.addon == basename(addon_path):
+        refresh_config()
 
 
-mw.refreshRetirementConfig = refreshConfig
-mw.runRetirement = applyRetirementActions
+aqt.addons.ConfigEditor.accept = wrap(aqt.addons.ConfigEditor.accept, support_accept)
+
+
+mw.refreshRetirementConfig = refresh_config
+mw.runRetirement = apply_retirement_actions
