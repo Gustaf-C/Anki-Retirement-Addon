@@ -9,9 +9,8 @@ from anki.cards import Card
 from aqt.utils import tooltip, showInfo
 import aqt
 from anki.utils import ids2str, intTime
-from anki import sched
-from anki import schedv2
-from anki.collection import _Collection, LegacyReviewUndo, LegacyCheckpoint
+from anki.scheduler import v3
+#from anki.collection import _Collection, LegacyReviewUndo, LegacyCheckpoint
 import copy
 import time
 
@@ -88,12 +87,12 @@ def addRetirementOpts(self, Dialog):
     self.rInt.setFixedWidth(60)
 
     self.label_23.setSizePolicy(
-            QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
+            QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Fixed)
     self.gridLayout_3.addWidget(
             QLabel("Retiring interval (0 = off)"), row, 0, 1, 1)
     self.gridLayout_3.addWidget(self.rInt, row, 1, 1, 1)
     dayLab = QLabel("days")
-    dayLab.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
+    dayLab.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Fixed)
     self.gridLayout_3.addWidget(dayLab, row, 2, 1, 1)
     row += 1
     wid = QLabel("Retirement actions")
@@ -101,7 +100,7 @@ def addRetirementOpts(self, Dialog):
 
     self.dn = QCheckBox("Delete")
     sep = QFrame()
-    sep.setFrameShape(QFrame.VLine)
+    sep.setFrameShape(QFrame.Shape.VLine)
     sep.setStyleSheet("color: grey;")
     self.sc = QCheckBox("Suspend")
     self.tn = QCheckBox("Tag")
@@ -166,17 +165,17 @@ def getProgressWidget():
     progressWidget = QWidget(None)
     layout = QVBoxLayout()
     progressWidget.setFixedSize(400, 70)
-    progressWidget.setWindowModality(Qt.ApplicationModal)
+    progressWidget.setWindowModality(Qt.WindowModality.ApplicationModal)
     progressWidget.setWindowIcon(QIcon(join(addon_path, 'icon.png')))
     progressWidget.setWindowTitle("Running Mass Retirement...")
     bar = QProgressBar(progressWidget)
-    if isMac:
+    if is_mac:
         bar.setFixedSize(380, 50)
     else:
         bar.setFixedSize(390, 50)
     bar.move(10, 10)
     per = QLabel(bar)
-    per.setAlignment(Qt.AlignCenter)
+    per.setAlignment(Qt.AlignmentFlag.AlignCenter)
     progressWidget.show()
     return progressWidget, bar
 
@@ -342,62 +341,62 @@ def checkInterval(self, card, ease):
             tooltip('The card has been retired.')
 
 
-def retirementUndoReview(self):
-    last = len(mw.col._undo.entries) - 1
+# def retirementUndoReview(self):
+#     last = len(mw.col._undo.entries) - 1
 
-    if (
-            isinstance(mw.col._undo.entries[last], LegacyReviewUndo)
-            and hasattr(mw.col._undo.entries[last], "retirementActions")
-            and len(mw.col._undo.entries[last].retirementActions) > 0
-    ):
-        data: LegacyReviewUndo = mw.col._undo.entries[last]
-        card = data.card
-        # if not data:
-        # self.clearUndo()
-        if not data.was_leech and card.note().hasTag("leech"):
-            card.note().delTag("leech")
-            card.note().flush()
-        if 'tag' in data.retirementActions:
-            card.note().delTag(RetirementTag)
-            card.note().flush()
-        if data.retirementActions[0] == 'move':
-            moveToDeck([card.id], data.retirementActions[1])
-        del data.retirementActions
-        card.flush()
-        last = self.db.scalar(
-                "select id from revlog where cid = ? "
-                "order by id desc limit 1", card.id)
-        self.db.execute("delete from revlog where id = ?", last)
-        self.db.execute(
-                "update cards set queue=type,mod=?,usn=? where queue=-2 and nid=?",
-                intTime(), self.usn(), card.nid)
-        n = 1 if card.queue == 3 else card.queue
-        type = ("new", "lrn", "rev")[n]
-        self.sched._updateStats(card, type, -1)
-        self.sched.reps -= 1
-        return LegacyReviewUndo(card, was_leech=data.was_leech)
-    else:
-        return ogUndoReview(mw.col)
-
-
-def retirementUndo(self):
-    last = len(mw.col._undo.entries) - 1
-    if (isinstance(mw.col._undo.entries[last], LegacyCheckpoint)
-                    and mw.col._undo.entries[last].action == "Card Retirement" and len(self._undo.entries) > 2):
-        tempUndo = self._undo.entries[last]
-        self.rollback()
-        self.clearUndo()
-        self._undo.entries.insert(0, tempUndo)
-        self.undo()
-    else:
-        return ogUndo(mw.col)
+#     if (
+#             isinstance(mw.col._undo.entries[last], LegacyReviewUndo)
+#             and hasattr(mw.col._undo.entries[last], "retirementActions")
+#             and len(mw.col._undo.entries[last].retirementActions) > 0
+#     ):
+#         data: LegacyReviewUndo = mw.col._undo.entries[last]
+#         card = data.card
+#         # if not data:
+#         # self.clearUndo()
+#         if not data.was_leech and card.note().hasTag("leech"):
+#             card.note().delTag("leech")
+#             card.note().flush()
+#         if 'tag' in data.retirementActions:
+#             card.note().delTag(RetirementTag)
+#             card.note().flush()
+#         if data.retirementActions[0] == 'move':
+#             moveToDeck([card.id], data.retirementActions[1])
+#         del data.retirementActions
+#         card.flush()
+#         last = self.db.scalar(
+#                 "select id from revlog where cid = ? "
+#                 "order by id desc limit 1", card.id)
+#         self.db.execute("delete from revlog where id = ?", last)
+#         self.db.execute(
+#                 "update cards set queue=type,mod=?,usn=? where queue=-2 and nid=?",
+#                 intTime(), self.usn(), card.nid)
+#         n = 1 if card.queue == 3 else card.queue
+#         type = ("new", "lrn", "rev")[n]
+#         self.sched._updateStats(card, type, -1)
+#         self.sched.reps -= 1
+#         return LegacyReviewUndo(card, was_leech=data.was_leech)
+#     else:
+#         return ogUndoReview(mw.col)
 
 
-ogUndoReview = _Collection._undo_review
-_Collection._undo_review = retirementUndoReview
+# def retirementUndo(self):
+#     last = len(mw.col._undo.entries) - 1
+#     if (isinstance(mw.col._undo.entries[last], LegacyCheckpoint)
+#                     and mw.col._undo.entries[last].action == "Card Retirement" and len(self._undo.entries) > 2):
+#         tempUndo = self._undo.entries[last]
+#         self.rollback()
+#         self.clearUndo()
+#         self._undo.entries.insert(0, tempUndo)
+#         self.undo()
+#     else:
+#         return ogUndo(mw.col)
 
-ogUndo = _Collection.undo
-_Collection.undo = retirementUndo
+
+# ogUndoReview = _Collection._undo_review
+# _Collection._undo_review = retirementUndoReview
+
+# ogUndo = _Collection.undo
+# _Collection.undo = retirementUndo
 
 
 def saveConfig(wid, rdn, rt, retroR, dailyR, realN, retroN):
@@ -433,7 +432,7 @@ def testretire():
 
 def openSettings():
     retirementMenu = QDialog(mw)
-    retirementMenu.setWindowFlags(Qt.Dialog | Qt.MSWindowsFixedSizeDialogHint)
+    retirementMenu.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.MSWindowsFixedSizeDialogHint)
     l1 = QLabel()
     l1.setText('Retirement Deck Name:')
     l1.setToolTip(
@@ -579,9 +578,7 @@ def setupMenu():
 
 
 setupMenu()
-sched.Scheduler.answerCard = wrap(sched.Scheduler.answerCard, checkInterval)
-schedv2.Scheduler.answerCard = wrap(
-        schedv2.Scheduler.answerCard, checkInterval)
+v3.Scheduler.answerCard = wrap(v3.Scheduler.answerCard, checkInterval)
 aqt.deckconf.DeckConf.loadConf = wrap(
         aqt.deckconf.DeckConf.loadConf, loadRetirement)
 aqt.deckconf.DeckConf.saveConf = wrap(
