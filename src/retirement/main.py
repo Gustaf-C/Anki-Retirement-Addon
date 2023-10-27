@@ -208,7 +208,7 @@ def apply_retirement_actions(notes=False, show_notification=True, optimizer=Fals
         if count % 10 == 0:
             progress_bar.setValue(count)
             mw.app.processEvents()
-        note = mw.col.getNote(nid)
+        note = mw.col.get_note(nid)
         cards = note.cards()
 
         for card in cards:
@@ -229,7 +229,7 @@ def apply_retirement_actions(notes=False, show_notification=True, optimizer=Fals
         move_to_deck(cards_to_move)
     if ndl > 0:
         notification += '- ' + str(ndl) + ' note(s) have been deleted<br>'
-        mw.col.remNotes(notes_to_delete)
+        mw.col.remove_notes(notes_to_delete)
     time_end = time.time()
     if notification != '' and RetroNotifications:
         display_notification('<b>' + str(total) + ' card(s) have been retired in ' + str(
@@ -254,7 +254,7 @@ def handle_retirement_actions(
                 total,
                 checkpointed,
                 review=False):
-    conf = mw.col.decks.confForDid(card.odid or card.did)['new']
+    conf = mw.col.decks.config_dict_for_deck_id(card.odid or card.did)['new']
     if 'retirementActions' in conf and 'retiringInterval' in conf:
         if conf['retiringInterval'] > 0 and ra_set(conf['retirementActions']):
             retire_interval = conf['retiringInterval']
@@ -271,14 +271,13 @@ def handle_retirement_actions(
                         if card.queue != -1:
                             suspended += 1
                             card.queue = -1
-                            card.flush()
-
+                            mw.col.update_card(card)
                     if retire_actions['tag']:
                         checkpointed = set_checkpointed(checkpointed, review)
-                        if not note.hasTag(RetirementTag):
+                        if not note.has_tag(RetirementTag):
                             tagged += 1
-                            note.addTag(RetirementTag)
-                            note.flush()
+                            note.add_tag(RetirementTag)
+                            mw.col.update_note(note)
                     if retire_actions['move']:
                         checkpointed = set_checkpointed(checkpointed, review)
                         if card.did != mw.col.decks.id(RetirementDeckName):
@@ -291,7 +290,7 @@ def display_notification(text):
 
 
 def grab_col():
-    return anki.find.Finder(mw.col).findNotes('')
+    return mw.col.find_notes("")
 
 
 def move_to_deck(cids, ogDeckId=False):
@@ -320,7 +319,7 @@ def check_interval(self, card, ease):
     tagged = 0
     total = 0
     checkpointed = False
-    note = mw.col.getNote(card.nid)
+    note = mw.col.get_note(card.nid)
     notes_to_delete, cards_to_move, suspended, tagged, total, checkpointed = handle_retirement_actions(
             card, note, notes_to_delete, cards_to_move, suspended, tagged, total, checkpointed, True)
     ndl = len(notes_to_delete)
@@ -338,7 +337,7 @@ def check_interval(self, card, ease):
             undo_copy = mw.col._undo
             mw.checkpoint("Card Retirement")
             mw.col._undo.append(undo_copy)
-            mw.col.remNotes(notes_to_delete)
+            mw.col.remove_notes(notes_to_delete)
         if tagged > 0:
             mw.col._undo.entries[last].retirementActions.append('tag')
         if RealNotifications:
