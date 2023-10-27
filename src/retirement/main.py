@@ -67,16 +67,6 @@ def refresh_config():
         RetroNotifications = True
 
 
-def cb_status_check(dn, sc, tn, mc):
-    if dn.isChecked():
-        sc.setEnabled(False)
-        tn.setEnabled(False)
-        mc.setEnabled(False)
-    else:
-        sc.setEnabled(True)
-        tn.setEnabled(True)
-        mc.setEnabled(True)
-
 def add_retirement_opts(dialog: DeckOptionsDialog) -> None:
     file = Path(__file__)
     with open(file.with_name("options.html"), encoding="utf8") as f:
@@ -85,97 +75,6 @@ def add_retirement_opts(dialog: DeckOptionsDialog) -> None:
         script = f.read()
 
     dialog.web.eval(script.replace("HTML_CONTENT", json.dumps(html)))
-
-
-def add_retirement_opts(self, Dialog):
-    row = self.gridLayout_3.rowCount()
-    wid = QLabel("<b>Card Retirement</b>")
-    self.gridLayout_3.addWidget(wid, row, 0, 1, 1)
-    row += 1
-    self.rInt = QSpinBox()
-    self.rInt.setValue(0)
-    self.rInt.setMinimum(0)
-    self.rInt.setMaximum(99999)
-    self.easyBonus.setFixedWidth(60)
-    self.revPerDay.setFixedWidth(60)
-    self.maxIvl.setFixedWidth(60)
-    self.fi1.setFixedWidth(60)
-    self.hardFactor.setFixedWidth(60)
-    self.rInt.setFixedWidth(60)
-
-    self.label_23.setSizePolicy(
-            QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Fixed)
-    self.gridLayout_3.addWidget(
-            QLabel("Retiring interval (0 = off)"), row, 0, 1, 1)
-    self.gridLayout_3.addWidget(self.rInt, row, 1, 1, 1)
-    day_lab = QLabel("days")
-    day_lab.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Fixed)
-    self.gridLayout_3.addWidget(day_lab, row, 2, 1, 1)
-    row += 1
-    wid = QLabel("Retirement actions")
-    self.gridLayout_3.addWidget(wid, row, 0, 1, 1)
-
-    self.dn = QCheckBox("Delete")
-    sep = QFrame()
-    sep.setFrameShape(QFrame.Shape.VLine)
-    sep.setStyleSheet("color: grey;")
-    self.sc = QCheckBox("Suspend")
-    self.tn = QCheckBox("Tag")
-    self.mc = QCheckBox("Move")
-    self.dn.setToolTip(
-            "WARNING: Applies on a per-note basis; all related cards will be deleted.")
-    self.sc.setToolTip("Applies on a per-card basis.")
-    self.tn.setToolTip(
-            "Applies on a per-note basis; all related cards will be tagged.")
-    self.mc.setToolTip("Applies on a per-card basis.")
-    self.dn.clicked.connect(lambda: cb_status_check(
-            self.dn, self.sc, self.tn, self.mc))
-    layout = QHBoxLayout()
-    layout.setContentsMargins(0, 0, 0, 0)
-    layout.setSpacing(5)
-    layout.addWidget(self.dn)
-    layout.addWidget(sep)
-    layout.addWidget(QLabel("<span>&nbsp;</span>"))
-    layout.addWidget(self.sc)
-    layout.addWidget(self.tn)
-    layout.addWidget(self.mc)
-    layout.addStretch()
-    self.gridLayout_3.addLayout(layout, row, 1, 1, 2)
-
-
-def save_retirement(self):
-    c = self.conf['new']
-    f = self.form
-    c['retiringInterval'] = f.rInt.value()
-    c['retirementActions'] = {'delete': f.dn.isChecked(), 'suspend': f.sc.isChecked(
-    ), 'tag': f.tn.isChecked(), 'move': f.mc.isChecked()}
-
-
-def load_retirement(self):
-
-    c = self.conf['new']
-    f = self.form
-    if 'retiringInterval' not in c:
-        c['retiringInterval'] = 0
-    if 'retirementActions' not in c:
-        c['retirementActions'] = {'delete': False,
-                                  'suspend': True, 'tag': True, 'move': False}
-    f.rInt.setValue(c['retiringInterval'])
-    f.dn.setChecked(c['retirementActions']['delete'])
-    f.sc.setChecked(c['retirementActions']['suspend'])
-    f.tn.setChecked(c['retirementActions']['tag'])
-    f.mc.setChecked(c['retirementActions']['move'])
-    if f.dn.isChecked():
-        f.sc.setEnabled(False)
-        f.tn.setEnabled(False)
-        f.mc.setEnabled(False)
-
-
-def ra_set(ra):
-    for a in ra:
-        if ra[a]:
-            return True
-    return False
 
 
 def get_progress_widget():
@@ -593,9 +492,6 @@ def setup_menu():
 
 setup_menu()
 v3.Scheduler.answerCard = wrap(v3.Scheduler.answerCard, check_interval)
-aqt.deckconf.DeckConf.loadConf = wrap(aqt.deckconf.DeckConf.loadConf, load_retirement)
-aqt.deckconf.DeckConf.saveConf = wrap(aqt.deckconf.DeckConf.saveConf, save_retirement, "before")
-aqt.forms.dconf.Ui_Dialog.setupUi = wrap(aqt.forms.dconf.Ui_Dialog.setupUi, add_retirement_opts)
 gui_hooks.profile_did_open.append(attempt_starting_refresh)
 gui_hooks.deck_options_did_load.append(add_retirement_opts)
 
