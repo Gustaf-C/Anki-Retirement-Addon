@@ -23,7 +23,7 @@ from anki.scheduler import v3
 
 addon_path = dirname(__file__)
 
-verNumber = "2.1.45.3"
+verNumber = "23.10"
 
 
 def get_config():
