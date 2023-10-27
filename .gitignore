@@ -1,3 +1,5 @@
 .DS_Store
 .vscode
 *.zip
+meta.json
+*.pyc
