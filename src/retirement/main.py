@@ -1,21 +1,22 @@
 # -*- coding: utf-8 -*-
 #
 
+import json
 import copy
 import time
 from os.path import join, dirname, basename
+from pathlib import Path
 
 import aqt
 from aqt import mw, gui_hooks
-from aqt.qt import (QLabel, QSpinBox, QCheckBox, QHBoxLayout, QFrame,
-                    QProgressBar, QVBoxLayout, QWidget, QDialog,
-                    QSizePolicy, Qt, QRadioButton, QGroupBox,
-                    QLineEdit, QAction, QMenu, QIcon, QPushButton)
+from aqt.deckoptions import DeckOptionsDialog
+from aqt.qt import (QAction, QGroupBox, QHBoxLayout, QIcon, QLineEdit, QMenu,
+                    QPushButton, QRadioButton, QProgressBar, QDialog, QLabel,
+                    QVBoxLayout, QWidget, Qt)
 from aqt.utils import tooltip, showInfo
 
 import anki.find
-from anki.cards import Card
-from anki.hooks import addHook, wrap
+from anki.hooks import wrap
 from anki.utils import ids2str, int_time, is_mac
 from anki.scheduler import v3
 # from anki.collection import _Collection, LegacyReviewUndo, LegacyCheckpoint
@@ -75,6 +76,15 @@ def cb_status_check(dn, sc, tn, mc):
         sc.setEnabled(True)
         tn.setEnabled(True)
         mc.setEnabled(True)
+
+def add_retirement_opts(dialog: DeckOptionsDialog) -> None:
+    file = Path(__file__)
+    with open(file.with_name("options.html"), encoding="utf8") as f:
+        html = f.read()
+    with open(file.with_name("options.js"), encoding="utf8") as f:
+        script = f.read()
+
+    dialog.web.eval(script.replace("HTML_CONTENT", json.dumps(html)))
 
 
 def add_retirement_opts(self, Dialog):
@@ -254,31 +264,32 @@ def handle_retirement_actions(
                 total,
                 checkpointed,
                 review=False):
-    conf = mw.col.decks.config_dict_for_deck_id(card.odid or card.did)['new']
-    if 'retirementActions' in conf and 'retiringInterval' in conf:
-        if conf['retiringInterval'] > 0 and ra_set(conf['retirementActions']):
-            retire_interval = conf['retiringInterval']
-            retire_actions = conf['retirementActions']
+    deck_config = mw.col.decks.config_dict_for_deck_id(card.odid or card.did)
+    if 'retirementOptions' in deck_config:
+        config = deck_config['retirementOptions']
+        if config['retire']:
+            retire_interval = config['retireInterval']
             if card.ivl > retire_interval:
                 total += 1
-                if retire_actions['delete']:
+                if config['delete']:
                     checkpointed = set_checkpointed(checkpointed, review)
                     if note.id not in notes_to_delete:
                         notes_to_delete.append(note.id)
                 else:
-                    if retire_actions['suspend']:
+                    if config['suspend']:
                         checkpointed = set_checkpointed(checkpointed, review)
                         if card.queue != -1:
                             suspended += 1
                             card.queue = -1
                             mw.col.update_card(card)
-                    if retire_actions['tag']:
+
+                    if config['tag']:
                         checkpointed = set_checkpointed(checkpointed, review)
                         if not note.has_tag(RetirementTag):
                             tagged += 1
                             note.add_tag(RetirementTag)
                             mw.col.update_note(note)
-                    if retire_actions['move']:
+                    if config['move']:
                         checkpointed = set_checkpointed(checkpointed, review)
                         if card.did != mw.col.decks.id(RetirementDeckName):
                             cards_to_move.append(card.id)
@@ -586,6 +597,7 @@ aqt.deckconf.DeckConf.loadConf = wrap(aqt.deckconf.DeckConf.loadConf, load_retir
 aqt.deckconf.DeckConf.saveConf = wrap(aqt.deckconf.DeckConf.saveConf, save_retirement, "before")
 aqt.forms.dconf.Ui_Dialog.setupUi = wrap(aqt.forms.dconf.Ui_Dialog.setupUi, add_retirement_opts)
 gui_hooks.profile_did_open.append(attempt_starting_refresh)
+gui_hooks.deck_options_did_load.append(add_retirement_opts)
 
 
 def support_accept(self):
