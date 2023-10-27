@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        table {border-collapse: collapse;}
+    </style>
+</head>
+<body>
+<h2>Card Retirement</h2>
+<div class="retireOption">
+    <label for="interval">Retiring interval (days, 0 = off):</label>
+    <input type="number" id="interval" min="0" />
+</div>
+<br/>
+<table class="retireOption">
+    <tr>
+        <td colspan="2"><b>Retirement actions:</b></td>
+    </tr>
+    <tr>
+        <td><label for="delete">Delete:</label></td>
+        <td><input type="checkbox" id="delete" onclick="handleDeleteCheckbox()" /></td>
+    </tr>
+    <tr>
+        <td><label for="suspend">Suspend:</label></td>
+        <td><input type="checkbox" id="suspend" /></td>
+    </tr>
+    <tr>
+        <td><label for="tag">Tag:</label></td>
+        <td><input type="checkbox" id="tag" /></td>
+    </tr>
+    <tr>
+        <td><label for="move">Move:</label></td>
+        <td><input type="checkbox" id="move" /></td>
+    </tr>
+</table>
+</body>
+</html>
