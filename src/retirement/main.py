@@ -6,7 +6,7 @@ import time
 from os.path import join, dirname, basename
 
 import aqt
-from aqt import mw
+from aqt import mw, gui_hooks
 from aqt.qt import (QLabel, QSpinBox, QCheckBox, QHBoxLayout, QFrame,
                     QProgressBar, QVBoxLayout, QWidget, QDialog,
                     QSizePolicy, Qt, QRadioButton, QGroupBox,
@@ -586,7 +586,7 @@ v3.Scheduler.answerCard = wrap(v3.Scheduler.answerCard, check_interval)
 aqt.deckconf.DeckConf.loadConf = wrap(aqt.deckconf.DeckConf.loadConf, load_retirement)
 aqt.deckconf.DeckConf.saveConf = wrap(aqt.deckconf.DeckConf.saveConf, save_retirement, "before")
 aqt.forms.dconf.Ui_Dialog.setupUi = wrap(aqt.forms.dconf.Ui_Dialog.setupUi, add_retirement_opts)
-addHook("profileLoaded", attempt_starting_refresh)
+gui_hooks.profile_did_open.append(attempt_starting_refresh)
 
 
 def support_accept(self):
