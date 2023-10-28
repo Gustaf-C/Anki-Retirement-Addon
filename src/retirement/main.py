@@ -67,9 +67,9 @@ def refresh_config():
 
 def add_retirement_opts(dialog: DeckOptionsDialog) -> None:
     file = Path(__file__)
-    with open(file.with_name("options.html"), encoding="utf8") as f:
+    with open(file.with_name("deck_options.html"), encoding="utf8") as f:
         html = f.read()
-    with open(file.with_name("options.js"), encoding="utf8") as f:
+    with open(file.with_name("deck_options.js"), encoding="utf8") as f:
         script = f.read()
 
     dialog.web.eval(script.replace("HTML_CONTENT", json.dumps(html)))
