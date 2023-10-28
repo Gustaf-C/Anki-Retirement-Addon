@@ -37,9 +37,6 @@ function setup(options) {
     } else {
       data.retirementOptions.retire = false;
     }
-
-    // and show current data for debugging
-    document.getElementById("debug").innerText = JSON.stringify(data, null, 4);
   });
 
   for (const retireOption of retireOptions) {
