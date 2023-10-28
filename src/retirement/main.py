@@ -2,7 +2,6 @@
 #
 
 import json
-import copy
 import time
 from os.path import join, dirname, basename
 from pathlib import Path
@@ -15,7 +14,6 @@ from aqt.qt import (QAction, QGroupBox, QHBoxLayout, QIcon, QLineEdit, QMenu,
                     QVBoxLayout, QWidget, Qt)
 from aqt.utils import tooltip, showInfo
 
-import anki.find
 from anki.hooks import wrap
 from anki.utils import ids2str, int_time, is_mac
 from anki.scheduler import v3
@@ -79,7 +77,6 @@ def add_retirement_opts(dialog: DeckOptionsDialog) -> None:
 
 def get_progress_widget():
     progress_widget = QWidget(None)
-    layout = QVBoxLayout()
     progress_widget.setFixedSize(400, 70)
     progress_widget.setWindowModality(Qt.WindowModality.ApplicationModal)
     progress_widget.setWindowIcon(QIcon(join(addon_path, 'icon.png')))
@@ -208,7 +205,6 @@ def move_to_deck(cids, ogDeckId=False):
         did = ogDeckId
     else:
         did = mw.col.decks.id(RetirementDeckName)
-    from aqt.studydeck import StudyDeck
     if not cids:
         return
     deck = mw.col.decks.get(did)
@@ -222,7 +218,6 @@ def move_to_deck(cids, ogDeckId=False):
 
 
 def check_interval(self, card, ease):
-    working_card = copy.copy(card)
     notes_to_delete = []
     cards_to_move = []
     suspended = 0
