@@ -8,6 +8,7 @@ from pathlib import Path
 
 import aqt
 from aqt import mw, gui_hooks
+from aqt.reviewer import Reviewer
 from aqt.deckoptions import DeckOptionsDialog
 from aqt.utils import tooltip, showInfo
 from aqt.qt import (QAction, QGroupBox, QHBoxLayout, QIcon, QLineEdit, QMenu,
@@ -151,7 +152,7 @@ def run_collection_retirement(notes=False):
     mw.reset()
     save_retirement_timestamp(time.time())
 
-
+# Maybe change this so it only returns bools instead of lists
 def check_retirement_actions(
                 card,
                 note,
@@ -204,11 +205,13 @@ def grab_col():
     return mw.col.find_notes("")
 
 
-def check_interval(card):
+def check_interval(reviewer: Reviewer, card: v3.Card, ease: int):
+    del reviewer, ease  # Unused
     notes_to_delete = []
     notes_to_tag = []
     cards_to_suspend = []
     cards_to_move = []
+
     note = mw.col.get_note(card.nid)
 
     notes_to_delete, notes_to_tag, cards_to_suspend, cards_to_move, retire_bool = \
@@ -399,7 +402,8 @@ def setup_menu():
 
 
 setup_menu()
-v3.Scheduler.answerCard = wrap(v3.Scheduler.answerCard, check_interval)
+
+gui_hooks.reviewer_did_answer_card.append(check_interval)
 gui_hooks.profile_did_open.append(attempt_starting_refresh)
 gui_hooks.deck_options_did_load.append(add_retirement_opts)
 
