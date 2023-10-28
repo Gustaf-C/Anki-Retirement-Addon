@@ -101,11 +101,8 @@ def apply_retirement_actions(notes=False, show_notification=True, optimizer=Fals
     tagged = 0
     total = 0
     progress_widget, progress_bar = get_progress_widget()
-    if not optimizer:
-        mw.checkpoint('Card Retirement')
     if not notes:
         notes = grab_col()
-    checkpointed = True
     progress_bar.setMinimum(0)
     progress_bar.setMaximum(len(notes))
     count = 0
@@ -120,8 +117,8 @@ def apply_retirement_actions(notes=False, show_notification=True, optimizer=Fals
         for card in cards:
             if card.ivl == 0:
                 continue
-            notes_to_delete, cards_to_move, suspended, tagged, total, checkpointed = handle_retirement_actions(
-                    card, note, notes_to_delete, cards_to_move, suspended, tagged, total, checkpointed)
+            notes_to_delete, cards_to_move, suspended, tagged, total = handle_retirement_actions(
+                    card, note, notes_to_delete, cards_to_move, suspended, tagged, total)
     notification = ''
     ndl = len(notes_to_delete)
     cml = len(cards_to_move)
@@ -144,12 +141,6 @@ def apply_retirement_actions(notes=False, show_notification=True, optimizer=Fals
     save_ass_retirement_timestamp(time.time())
 
 
-def set_checkpointed(checkpointed, review):
-    if not checkpointed and not review:
-        mw.checkpoint("Card Retirement")
-    return True
-
-
 def handle_retirement_actions(
                 card,
                 note,
@@ -158,7 +149,6 @@ def handle_retirement_actions(
                 suspended,
                 tagged,
                 total,
-                checkpointed,
                 review=False):
     deck_config = mw.col.decks.config_dict_for_deck_id(card.odid or card.did)
     if 'retirementOptions' in deck_config:
@@ -168,28 +158,24 @@ def handle_retirement_actions(
             if card.ivl > retire_interval:
                 total += 1
                 if config['delete']:
-                    checkpointed = set_checkpointed(checkpointed, review)
                     if note.id not in notes_to_delete:
                         notes_to_delete.append(note.id)
                 else:
                     if config['suspend']:
-                        checkpointed = set_checkpointed(checkpointed, review)
                         if card.queue != -1:
                             suspended += 1
                             card.queue = -1
                             mw.col.update_card(card)
 
                     if config['tag']:
-                        checkpointed = set_checkpointed(checkpointed, review)
                         if not note.has_tag(RetirementTag):
                             tagged += 1
                             note.add_tag(RetirementTag)
                             mw.col.update_note(note)
                     if config['move']:
-                        checkpointed = set_checkpointed(checkpointed, review)
                         if card.did != mw.col.decks.id(RetirementDeckName):
                             cards_to_move.append(card.id)
-    return notes_to_delete, cards_to_move, suspended, tagged, total, checkpointed
+    return notes_to_delete, cards_to_move, suspended, tagged, total
 
 
 def display_notification(text):
@@ -223,88 +209,19 @@ def check_interval(self, card, ease):
     suspended = 0
     tagged = 0
     total = 0
-    checkpointed = False
     note = mw.col.get_note(card.nid)
-    notes_to_delete, cards_to_move, suspended, tagged, total, checkpointed = handle_retirement_actions(
-            card, note, notes_to_delete, cards_to_move, suspended, tagged, total, checkpointed, True)
+    notes_to_delete, cards_to_move, suspended, tagged, total = handle_retirement_actions(
+            card, note, notes_to_delete, cards_to_move, suspended, tagged, total, True)
     ndl = len(notes_to_delete)
     cml = len(cards_to_move)
     if suspended > 0 or tagged > 0 or cml > 0 or ndl > 0:
-        last = len(mw.col._undo.entries) - 1
-
-        mw.col._undo.entries[last].retirementActions = []
         if cml > 0:
-            mw.col._undo.entries[last].retirementActions.append('move')
-            mw.col._undo.entries[last].retirementActions.append(card.did)
             move_to_deck(cards_to_move)
             mw.col.db.commit()
         if ndl > 0:
-            undo_copy = mw.col._undo
-            mw.checkpoint("Card Retirement")
-            mw.col._undo.append(undo_copy)
             mw.col.remove_notes(notes_to_delete)
-        if tagged > 0:
-            mw.col._undo.entries[last].retirementActions.append('tag')
         if RealNotifications:
             tooltip('The card has been retired.')
-
-
-# def retirementUndoReview(self):
-#     last = len(mw.col._undo.entries) - 1
-
-#     if (
-#             isinstance(mw.col._undo.entries[last], LegacyReviewUndo)
-#             and hasattr(mw.col._undo.entries[last], "retirementActions")
-#             and len(mw.col._undo.entries[last].retirementActions) > 0
-#     ):
-#         data: LegacyReviewUndo = mw.col._undo.entries[last]
-#         card = data.card
-#         # if not data:
-#         # self.clearUndo()
-#         if not data.was_leech and card.note().hasTag("leech"):
-#             card.note().delTag("leech")
-#             card.note().flush()
-#         if 'tag' in data.retirementActions:
-#             card.note().delTag(RetirementTag)
-#             card.note().flush()
-#         if data.retirementActions[0] == 'move':
-#             moveToDeck([card.id], data.retirementActions[1])
-#         del data.retirementActions
-#         card.flush()
-#         last = self.db.scalar(
-#                 "select id from revlog where cid = ? "
-#                 "order by id desc limit 1", card.id)
-#         self.db.execute("delete from revlog where id = ?", last)
-#         self.db.execute(
-#                 "update cards set queue=type,mod=?,usn=? where queue=-2 and nid=?",
-#                 intTime(), self.usn(), card.nid)
-#         n = 1 if card.queue == 3 else card.queue
-#         type = ("new", "lrn", "rev")[n]
-#         self.sched._updateStats(card, type, -1)
-#         self.sched.reps -= 1
-#         return LegacyReviewUndo(card, was_leech=data.was_leech)
-#     else:
-#         return ogUndoReview(mw.col)
-
-
-# def retirementUndo(self):
-#     last = len(mw.col._undo.entries) - 1
-#     if (isinstance(mw.col._undo.entries[last], LegacyCheckpoint)
-#                     and mw.col._undo.entries[last].action == "Card Retirement" and len(self._undo.entries) > 2):
-#         tempUndo = self._undo.entries[last]
-#         self.rollback()
-#         self.clearUndo()
-#         self._undo.entries.insert(0, tempUndo)
-#         self.undo()
-#     else:
-#         return ogUndo(mw.col)
-
-
-# ogUndoReview = _Collection._undo_review
-# _Collection._undo_review = retirementUndoReview
-
-# ogUndo = _Collection.undo
-# _Collection.undo = retirementUndo
 
 
 def save_config(wid, rdn, rt, retro_r, daily_r, real_n, retro_n):
