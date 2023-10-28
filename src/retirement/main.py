@@ -32,10 +32,6 @@ def get_config():
 RetirementTag = get_config()["Retirement Tag"]
 
 
-def attempt_starting_refresh():
-    starting_refresh()
-
-
 def starting_refresh():
     refresh_config()
     if mw.RetroactiveRetiring:
@@ -250,10 +246,6 @@ def save_config(wid, rdn, rt, retro_r, daily_r, real_n, retro_n):
     wid.hide()
 
 
-def testretire():
-    run_collection_retirement()
-
-
 def open_settings():
     retirement_menu = QDialog(mw)
     retirement_menu.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.MSWindowsFixedSizeDialogHint)
@@ -397,14 +389,14 @@ def setup_menu():
     sub_menu.addAction(retirement_settings)
 
     mass_retirement = QAction("Run Mass Retirement", mw)
-    mass_retirement.triggered.connect(testretire)
+    mass_retirement.triggered.connect(run_collection_retirement)
     sub_menu.addAction(mass_retirement)
 
 
 setup_menu()
 
 gui_hooks.reviewer_did_answer_card.append(check_interval)
-gui_hooks.profile_did_open.append(attempt_starting_refresh)
+gui_hooks.profile_did_open.append(starting_refresh)
 gui_hooks.deck_options_did_load.append(add_retirement_opts)
 
 
