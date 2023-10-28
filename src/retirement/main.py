@@ -194,7 +194,7 @@ def do_retirement_actions(notes_to_delete, notes_to_tag, cards_to_suspend, cards
 
 
 def display_notification(text):
-    showInfo(text=text, help="", type="info", title="Card Retirement")
+    showInfo(parent=aqt.mw, text=text, title="Card Retirement")
 
 
 def grab_col():
