@@ -9,10 +9,10 @@ from pathlib import Path
 import aqt
 from aqt import mw, gui_hooks
 from aqt.deckoptions import DeckOptionsDialog
+from aqt.utils import tooltip, showInfo
 from aqt.qt import (QAction, QGroupBox, QHBoxLayout, QIcon, QLineEdit, QMenu,
                     QPushButton, QRadioButton, QProgressBar, QDialog, QLabel,
                     QVBoxLayout, QWidget, Qt)
-from aqt.utils import tooltip, showInfo
 
 from anki.hooks import wrap
 from anki.utils import is_mac
